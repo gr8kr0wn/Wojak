@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>W0jak | Web3 Builder & Marketer</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2300FFA3'/%3E%3Cstop offset='100%25' stop-color='%23DC1FFF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='30' fill='url(%23g)'/%3E%3Cpath d='M18 24h28M18 32h28M18 40h28' stroke='white' stroke-width='5' stroke-linecap='round' fill='none'/%3E%3Ctext x='32' y='52' font-family='Arial' font-size='10' font-weight='bold' fill='white' text-anchor='middle'%3ESOL%3C/text%3E%3C/svg%3E">
 <style>
@@ -16,10 +17,53 @@ body{background:#020408;color:#e8f4ff;font-family:'Outfit',sans-serif;overflow-x
 .cursor-ring{position:fixed;width:36px;height:36px;border:1px solid rgba(0,170,255,0.5);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all 0.14s ease}
 @media(hover:none){.cursor,.cursor-ring{display:none}}
 
+/* ===== ADMIN MODAL ===== */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,0.95);backdrop-filter:blur(16px);z-index:2000;display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:all 0.3s ease}
+.modal.active{visibility:visible;opacity:1}
+.modal-content{background:#0a1220;border:1px solid rgba(0,170,255,0.4);border-radius:32px;width:92%;max-width:680px;max-height:88vh;overflow-y:auto;padding:36px;box-shadow:0 0 80px rgba(0,170,255,0.25)}
+.modal-content h3{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:var(--blue);margin-bottom:16px;letter-spacing:2px}
+.modal-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px;border-bottom:1px solid rgba(0,170,255,0.12);padding-bottom:16px}
+.mtab{font-family:'JetBrains Mono',monospace;font-size:0.65rem;letter-spacing:2px;padding:8px 16px;border:1px solid rgba(0,170,255,0.2);color:var(--muted);background:transparent;cursor:pointer;border-radius:40px;transition:all 0.2s;text-transform:uppercase}
+.mtab.active,.mtab:hover{background:rgba(0,170,255,0.12);color:var(--blue);border-color:var(--blue)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.modal-content label{font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--muted);display:block;margin-top:16px;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase}
+.modal-content input,.modal-content textarea,.modal-content select{width:100%;background:#020408;border:1px solid rgba(0,170,255,0.3);padding:11px 14px;color:white;border-radius:14px;font-family:'Outfit',sans-serif;font-size:0.9rem;transition:border-color 0.2s}
+.modal-content input:focus,.modal-content textarea:focus,.modal-content select:focus{outline:none;border-color:var(--blue)}
+.modal-content textarea{min-height:80px;resize:vertical}
+.modal-content select option{background:#0a1220}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:520px){.form-row{grid-template-columns:1fr}}
+.modal-actions{display:flex;gap:12px;margin-top:28px;justify-content:flex-end;flex-wrap:wrap}
+.modal-actions button{padding:11px 22px;background:transparent;border:1px solid var(--blue);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:0.68rem;cursor:pointer;border-radius:40px;transition:0.2s;text-transform:uppercase;letter-spacing:1px}
+.modal-actions button.primary{background:var(--blue);color:#000;border:none;font-weight:700}
+.modal-actions button:hover{transform:translateY(-2px)}
+.modal-actions button.danger{border-color:#ff4455;color:#ff4455}
+.modal-actions button.danger:hover{background:rgba(255,68,85,0.1)}
+.save-status{font-family:'JetBrains Mono',monospace;font-size:0.7rem;margin-top:14px;text-align:center;color:var(--blue);min-height:20px}
+.login-status{font-family:'JetBrains Mono',monospace;font-size:0.7rem;margin-top:16px;text-align:center;color:#ff7777}
+.edit-hint{position:fixed;bottom:20px;left:20px;background:rgba(0,170,255,0.15);backdrop-filter:blur(12px);padding:6px 16px;border-radius:40px;font-size:0.6rem;font-family:'JetBrains Mono';z-index:1001;pointer-events:none;border-left:3px solid var(--blue);color:var(--white);letter-spacing:1px}
+
+/* list of DB items in admin */
+.admin-list{display:flex;flex-direction:column;gap:10px;margin-top:20px}
+.admin-item{background:rgba(0,170,255,0.04);border:1px solid rgba(0,170,255,0.1);border-radius:14px;padding:16px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.admin-item-info{flex:1;min-width:0}
+.admin-item-name{font-weight:600;color:var(--white);font-size:0.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.admin-item-sub{font-family:'JetBrains Mono',monospace;font-size:0.6rem;color:var(--muted);margin-top:3px}
+.admin-item-actions{display:flex;gap:8px;flex-shrink:0}
+.admin-item-actions button{padding:6px 14px;font-family:'JetBrains Mono',monospace;font-size:0.6rem;border-radius:30px;cursor:pointer;border:1px solid rgba(0,170,255,0.3);background:transparent;color:var(--blue);transition:0.2s;letter-spacing:1px;text-transform:uppercase}
+.admin-item-actions button:hover{background:rgba(0,170,255,0.1)}
+.admin-item-actions button.del{border-color:rgba(255,68,85,0.3);color:#ff4455}
+.admin-item-actions button.del:hover{background:rgba(255,68,85,0.08)}
+.add-new-btn{margin-top:20px;width:100%;padding:12px;background:transparent;border:1px dashed rgba(0,170,255,0.3);color:var(--blue);font-family:'JetBrains Mono',monospace;font-size:0.68rem;cursor:pointer;border-radius:14px;transition:all 0.2s;letter-spacing:2px;text-transform:uppercase}
+.add-new-btn:hover{background:rgba(0,170,255,0.06);border-color:var(--blue)}
+.inline-form{background:rgba(0,30,80,0.4);border:1px solid rgba(0,170,255,0.2);border-radius:18px;padding:22px;margin-top:16px;display:none}
+.inline-form.open{display:block}
+.inline-form h4{font-family:'Bebas Neue',sans-serif;color:var(--blue);font-size:1.2rem;letter-spacing:2px;margin-bottom:4px}
+
 /* NAV */
 nav{position:fixed;top:0;left:0;right:0;z-index:500;padding:22px 64px;display:flex;justify-content:space-between;align-items:center;transition:background 0.4s,backdrop-filter 0.4s}
 nav.scrolled{background:rgba(2,4,8,0.93);backdrop-filter:blur(24px);border-bottom:1px solid rgba(0,170,255,0.08)}
-.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px}
+.nav-logo{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px;cursor:pointer}
 .nav-logo .acc{color:var(--blue);text-shadow:0 0 30px var(--blue)}
 .nav-links{display:flex;gap:40px;list-style:none}
 .nav-links a{font-family:'JetBrains Mono',monospace;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);text-decoration:none;transition:color 0.3s}
@@ -29,7 +73,6 @@ nav.scrolled{background:rgba(2,4,8,0.93);backdrop-filter:blur(24px);border-botto
 /* HERO */
 #hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;padding:0 64px;overflow:hidden}
 .hero-inner{display:grid;grid-template-columns:1fr 400px;gap:60px;align-items:center;max-width:1280px;width:100%}
-
 .hero-eyebrow{font-family:'JetBrains Mono',monospace;font-size:0.7rem;letter-spacing:4px;text-transform:uppercase;color:var(--blue);margin-bottom:24px;display:flex;align-items:center;gap:12px;opacity:0;animation:fadeUp 0.8s 0.3s forwards}
 .hero-eyebrow::before{content:'';width:36px;height:1px;background:var(--blue);box-shadow:0 0 8px var(--blue)}
 .hero-name{font-family:'Bebas Neue',sans-serif;font-size:clamp(5.5rem,13vw,12rem);line-height:0.88;letter-spacing:2px;opacity:0;animation:fadeUp 0.9s 0.5s forwards}
@@ -68,15 +111,12 @@ nav.scrolled{background:rgba(2,4,8,0.93);backdrop-filter:blur(24px);border-botto
 .pfp-tag{position:absolute;font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:2px;text-transform:uppercase;color:var(--blue);z-index:7;opacity:0.85}
 .pfp-tag.t{top:14px;left:14px}
 .pfp-tag.b{bottom:18px;right:14px;text-align:right}
-
 .scroll-hint{position:absolute;bottom:36px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;z-index:2;opacity:0;animation:fadeIn 1s 2s forwards}
 .scroll-hint span{font-family:'JetBrains Mono',monospace;font-size:0.56rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted)}
 .scroll-line{width:1px;height:44px;background:linear-gradient(180deg,var(--blue),transparent);animation:sA 2s ease-in-out infinite}
 @keyframes sA{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
-
 @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
-
 @media(max-width:900px){
   #hero{padding:100px 24px 60px}
   .hero-inner{grid-template-columns:1fr;gap:40px}
@@ -141,9 +181,6 @@ section{position:relative;z-index:1}
 .pcard-name{font-family:'Bebas Neue',sans-serif;font-size:2.1rem;letter-spacing:2px;color:var(--white);margin-bottom:5px;line-height:1}
 .pcard-role{font-family:'JetBrains Mono',monospace;font-size:0.6rem;letter-spacing:2px;color:var(--muted);margin-bottom:13px}
 .pcard-desc{font-size:0.88rem;color:rgba(232,244,255,0.55);line-height:1.75;max-width:520px}
-.pcard-impacts{margin-top:14px;list-style:none;display:flex;flex-direction:column;gap:5px}
-.pcard-impacts li{font-size:0.8rem;color:rgba(232,244,255,0.42);padding-left:14px;position:relative}
-.pcard-impacts li::before{content:'›';position:absolute;left:0;color:var(--blue);line-height:1.3}
 .pcard-metrics{padding:34px 28px;display:flex;flex-direction:column;gap:22px;justify-content:center;border-left:1px solid rgba(0,170,255,0.07);align-items:flex-end}
 .metric-val{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:2px;color:var(--blue);text-shadow:0 0 26px rgba(0,170,255,0.3);line-height:1;text-align:right}
 .metric-lbl{font-family:'JetBrains Mono',monospace;font-size:0.54rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-top:4px;text-align:right}
@@ -169,7 +206,6 @@ section{position:relative;z-index:1}
 .scard-handle{font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;color:var(--white)}
 .scard-arr{margin-top:auto;font-size:1.1rem;color:var(--blue);opacity:0;transition:opacity 0.3s,transform 0.3s;transform:translate(-4px,4px)}
 .scard:hover .scard-arr{opacity:1;transform:translate(0,0)}
-
 .cta-band{padding:56px;background:rgba(0,80,200,0.05);border:1px solid rgba(0,170,255,0.1);display:flex;justify-content:space-between;align-items:center;gap:40px;flex-wrap:wrap;max-width:1200px;position:relative;overflow:hidden}
 .cta-band::before{content:'';position:absolute;left:-80px;top:-80px;width:360px;height:360px;background:radial-gradient(circle,rgba(0,100,255,0.1) 0%,transparent 70%);pointer-events:none}
 .cta-text h3{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:2px;color:var(--white);margin-bottom:6px}
@@ -180,8 +216,6 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
 .foot-logo{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:4px}
 .foot-logo span{color:var(--blue)}
 .foot-copy{font-family:'JetBrains Mono',monospace;font-size:0.58rem;letter-spacing:2px;color:var(--muted)}
-
-/* REVEAL */
 .reveal{opacity:0;transform:translateY(40px);transition:opacity 0.8s cubic-bezier(0.4,0,0.2,1),transform 0.8s cubic-bezier(0.4,0,0.2,1)}
 .reveal.up{opacity:1;transform:translateY(0)}
 .d1{transition-delay:0.1s}.d2{transition-delay:0.2s}.d3{transition-delay:0.3s}
@@ -191,9 +225,136 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
 <canvas id="bg-canvas"></canvas>
 <div class="cursor" id="cursor"></div>
 <div class="cursor-ring" id="cursorRing"></div>
+<div class="edit-hint" id="editHint"></div>
 
+<!-- ===== ADMIN MODAL ===== -->
+<div class="modal" id="adminModal">
+  <div class="modal-content">
+    <h3 id="modalTitle">🔐 ADMIN ACCESS</h3>
+
+    <!-- LOGIN VIEW -->
+    <div id="loginView">
+      <label>Email</label><input type="email" id="adminEmail" placeholder="admin@example.com">
+      <label>Password</label><input type="password" id="adminPassword" placeholder="••••••••">
+      <div class="modal-actions"><button id="doLoginBtn" class="primary">LOGIN</button></div>
+      <div id="loginError" class="login-status"></div>
+    </div>
+
+    <!-- EDITOR VIEW -->
+    <div id="editorView" style="display:none">
+      <div class="modal-tabs">
+        <button class="mtab active" data-tab="content">Content</button>
+        <button class="mtab" data-tab="projects">Projects</button>
+        <button class="mtab" data-tab="skills">Skills</button>
+        <button class="mtab" data-tab="socials">Socials</button>
+      </div>
+
+      <!-- TAB: CONTENT -->
+      <div class="tab-panel active" id="tab-content">
+        <label>Hero Tagline</label><textarea id="editTagline" rows="2"></textarea>
+        <label>About Paragraph 1</label><textarea id="editAbout1" rows="3"></textarea>
+        <label>About Paragraph 2</label><textarea id="editAbout2" rows="3"></textarea>
+        <label>About Paragraph 3</label><textarea id="editAbout3" rows="2"></textarea>
+        <div class="form-row">
+          <div><label>Stat 1 (Onboarded)</label><input type="text" id="editStat1"></div>
+          <div><label>Stat 1 Label</label><input type="text" id="editStat1Lbl"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Stat 2 (Spaces)</label><input type="text" id="editStat2"></div>
+          <div><label>Stat 2 Label</label><input type="text" id="editStat2Lbl"></div>
+        </div>
+        <div class="form-row">
+          <div><label>Stat 3 (Years)</label><input type="text" id="editStat3"></div>
+          <div><label>Stat 3 Label</label><input type="text" id="editStat3Lbl"></div>
+        </div>
+        <div class="modal-actions">
+          <button id="saveContentBtn" class="primary">Save Content</button>
+          <button id="logoutBtn">Logout</button>
+        </div>
+        <div class="save-status" id="saveStatusContent"></div>
+      </div>
+
+      <!-- TAB: PROJECTS -->
+      <div class="tab-panel" id="tab-projects">
+        <div class="admin-list" id="projectsList"></div>
+        <button class="add-new-btn" id="addProjectBtn">+ Add New Project</button>
+        <div class="inline-form" id="projectForm">
+          <h4 id="projectFormTitle">New Project</h4>
+          <input type="hidden" id="projectFormId">
+          <label>Project Name</label><input type="text" id="pfName" placeholder="SKELLY ON SOL">
+          <label>Chain / Category</label><input type="text" id="pfChain" placeholder="Solana · Memecoin">
+          <label>Role</label><input type="text" id="pfRole" placeholder="// Community Builder & Marketer">
+          <label>Description</label><textarea id="pfDesc" rows="3"></textarea>
+          <div class="form-row">
+            <div><label>Metric Value 1</label><input type="text" id="pfMetric1Val" placeholder="$100K"></div>
+            <div><label>Metric Label 1</label><input type="text" id="pfMetric1Lbl" placeholder="All-Time High"></div>
+          </div>
+          <div class="form-row">
+            <div><label>Metric Value 2</label><input type="text" id="pfMetric2Val" placeholder="6 Days"></div>
+            <div><label>Metric Label 2</label><input type="text" id="pfMetric2Lbl" placeholder="To Bond"></div>
+          </div>
+          <label>Sort Order</label><input type="number" id="pfOrder" placeholder="1" min="1">
+          <div class="modal-actions">
+            <button id="saveProjectBtn" class="primary">Save Project</button>
+            <button id="cancelProjectBtn">Cancel</button>
+          </div>
+        </div>
+        <div class="save-status" id="saveStatusProjects"></div>
+      </div>
+
+      <!-- TAB: SKILLS -->
+      <div class="tab-panel" id="tab-skills">
+        <div class="admin-list" id="skillsList"></div>
+        <button class="add-new-btn" id="addSkillBtn">+ Add New Skill</button>
+        <div class="inline-form" id="skillForm">
+          <h4 id="skillFormTitle">New Skill</h4>
+          <input type="hidden" id="skillFormId">
+          <label>Skill Title</label><input type="text" id="sfTitle" placeholder="Community Building & Growth">
+          <label>Icon (emoji)</label><input type="text" id="sfIcon" placeholder="🌐">
+          <label>Period</label><input type="text" id="sfPeriod" placeholder="2022 – Present">
+          <label>Description</label><textarea id="sfBody" rows="3"></textarea>
+          <label>Sort Order</label><input type="number" id="sfOrder" placeholder="1" min="1">
+          <div class="modal-actions">
+            <button id="saveSkillBtn" class="primary">Save Skill</button>
+            <button id="cancelSkillBtn">Cancel</button>
+          </div>
+        </div>
+        <div class="save-status" id="saveStatusSkills"></div>
+      </div>
+
+      <!-- TAB: SOCIALS -->
+      <div class="tab-panel" id="tab-socials">
+        <div class="admin-list" id="socialsList"></div>
+        <button class="add-new-btn" id="addSocialBtn">+ Add New Social</button>
+        <div class="inline-form" id="socialForm">
+          <h4 id="socialFormTitle">New Social</h4>
+          <input type="hidden" id="socialFormId">
+          <label>Platform Name</label><input type="text" id="soFPlatform" placeholder="Twitter / X">
+          <label>Handle</label><input type="text" id="soFHandle" placeholder="@w0jakk">
+          <label>URL</label><input type="text" id="soFUrl" placeholder="https://x.com/w0jakk">
+          <label>Platform Type (for icon)</label>
+          <select id="soFType">
+            <option value="twitter">Twitter / X</option>
+            <option value="telegram">Telegram</option>
+            <option value="discord">Discord</option>
+            <option value="other">Other</option>
+          </select>
+          <label>Sort Order</label><input type="number" id="soFOrder" placeholder="1" min="1">
+          <div class="modal-actions">
+            <button id="saveSocialBtn" class="primary">Save Social</button>
+            <button id="cancelSocialBtn">Cancel</button>
+          </div>
+        </div>
+        <div class="save-status" id="saveStatusSocials"></div>
+      </div>
+
+    </div><!-- end editorView -->
+  </div>
+</div>
+
+<!-- ===== NAV ===== -->
 <nav id="nav">
-  <div class="nav-logo">W<span class="acc">0</span>JAK</div>
+  <div class="nav-logo" id="secretAdminTrigger">W<span class="acc">0</span>JAK</div>
   <ul class="nav-links">
     <li><a href="#about">About</a></li>
     <li><a href="#skills">Skills</a></li>
@@ -202,16 +363,17 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
   </ul>
 </nav>
 
+<!-- ===== HERO ===== -->
 <section id="hero">
   <div class="hero-inner">
     <div class="hero-left">
       <div class="hero-eyebrow">Web3 Builder &amp; Marketer · Solana</div>
       <h1 class="hero-name"><span class="w0">W0</span>JAK</h1>
-      <p class="hero-tagline">Turning early-stage ideas into visible, liquid, and sustainable ecosystems. I don't push attention — I engineer narratives that last.</p>
+      <p class="hero-tagline" id="dynamicTagline">Turning early-stage ideas into visible, liquid, and sustainable ecosystems. I don't push attention — I engineer narratives that last.</p>
       <div class="hero-stats">
-        <div class="hstat"><div class="hstat-num" data-target="500" data-suffix="+">0</div><div class="hstat-lbl">Onboarded</div></div>
-        <div class="hstat"><div class="hstat-num" data-target="100" data-suffix="+">0</div><div class="hstat-lbl">Spaces Hosted</div></div>
-        <div class="hstat"><div class="hstat-num" data-target="3" data-suffix="+">0</div><div class="hstat-lbl">Years Active</div></div>
+        <div class="hstat"><div class="hstat-num" id="stat1Val" data-target="500" data-suffix="+">0</div><div class="hstat-lbl" id="stat1Lbl">Onboarded</div></div>
+        <div class="hstat"><div class="hstat-num" id="stat2Val" data-target="100" data-suffix="+">0</div><div class="hstat-lbl" id="stat2Lbl">Spaces Hosted</div></div>
+        <div class="hstat"><div class="hstat-num" id="stat3Val" data-target="3" data-suffix="+">0</div><div class="hstat-lbl" id="stat3Lbl">Years Active</div></div>
       </div>
       <div class="hero-btns">
         <a href="#projects" class="btn-main">View Projects</a>
@@ -222,9 +384,7 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
       <div class="pfp-wrap">
         <div class="pfp-glow"></div>
         <div class="pfp-border"></div>
-        <div class="pfp-box">
-          <img src="profile.jpeg" alt="W0jak"/>
-        </div>
+        <div class="pfp-box"><img src="profile.jpeg" alt="W0jak"/></div>
         <div class="pfp-scan"></div>
         <div class="pfp-c tl"></div><div class="pfp-c tr"></div>
         <div class="pfp-c bl"></div><div class="pfp-c br"></div>
@@ -236,14 +396,15 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
   <div class="scroll-hint"><span>Scroll</span><div class="scroll-line"></div></div>
 </section>
 
+<!-- ===== ABOUT ===== -->
 <section id="about" class="pad">
   <div class="sec-eyebrow reveal"><span class="sec-num">// 01</span><div class="sec-hr"></div></div>
   <h2 class="sec-title reveal">ABOUT <span class="hi">ME</span></h2>
   <div class="about-grid">
     <div class="about-body">
-      <p class="reveal">Entered crypto in <strong>2022</strong>. Since then: <strong>500+ people onboarded</strong> into Web3 through hundreds of Twitter Spaces — helping many move from zero understanding to profitable, long-term participation.</p>
-      <p class="reveal d1">My edge sits at the intersection of <strong>storytelling, strategy, and community psychology</strong>. I don't just push attention — I engineer narratives, design growth systems, and build trust-driven communities that compound over time.</p>
-      <p class="reveal d2">Visibility without retention is noise. Volume without belief is temporary. <strong>I focus on results that last.</strong></p>
+      <p id="aboutPara1" class="reveal">Entered crypto in <strong>2022</strong>. Since then: <strong>500+ people onboarded</strong> into Web3 through hundreds of Twitter Spaces — helping many move from zero understanding to profitable, long-term participation.</p>
+      <p id="aboutPara2" class="reveal d1">My edge sits at the intersection of <strong>storytelling, strategy, and community psychology</strong>. I don't just push attention — I engineer narratives, design growth systems, and build trust-driven communities that compound over time.</p>
+      <p id="aboutPara3" class="reveal d2">Visibility without retention is noise. Volume without belief is temporary. <strong>I focus on results that last.</strong></p>
     </div>
     <div class="acards">
       <div class="acard reveal"><h4>🎙 Community Architect</h4><p>Hosted 100+ Twitter Spaces. Turned strangers into believers. Built ecosystems that outlast the hype cycle.</p></div>
@@ -253,20 +414,22 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
   </div>
 </section>
 
+<!-- ===== SKILLS ===== -->
 <section id="skills" class="pad">
   <div class="sec-eyebrow reveal"><span class="sec-num">// 02</span><div class="sec-hr"></div></div>
   <h2 class="sec-title reveal">CORE <span class="hi">SKILLS</span></h2>
-  <div class="skills-grid reveal">
-    <div class="skcard"><div class="skcard-bg-num">01</div><div class="skcard-icon">🌐</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Community Building & Growth</div><p class="skcard-body">Hosted 100+ Twitter Spaces. Directly onboarded 500+ people into Web3. Managed communities at every stage — from raw launches to scaling narratives. Engineered growth systems that compound over time.</p></div>
-    <div class="skcard"><div class="skcard-bg-num">02</div><div class="skcard-icon">✍️</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Narrative Design & Strategy</div><p class="skcard-body">Engineered narratives for multiple Web3 projects. Designed trust-driven communities. Bridged the gap between hype and real traction through strategic storytelling and community psychology.</p></div>
-    <div class="skcard"><div class="skcard-bg-num">03</div><div class="skcard-icon">⚡</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Project Launch & Scaling</div><p class="skcard-body">Worked hands-on at every stage — from raw launches to scaling narratives. Achieved rapid market validation and sustained growth across multiple blockchain ecosystems.</p></div>
+  <div class="skills-grid reveal" id="skillsGrid">
+    <div class="skcard"><div class="skcard-bg-num">01</div><div class="skcard-icon">🌐</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Community Building & Growth</div><p class="skcard-body">Hosted 100+ Twitter Spaces. Directly onboarded 500+ people into Web3. Managed communities at every stage — from raw launches to scaling narratives.</p></div>
+    <div class="skcard"><div class="skcard-bg-num">02</div><div class="skcard-icon">✍️</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Narrative Design & Strategy</div><p class="skcard-body">Engineered narratives for multiple Web3 projects. Designed trust-driven communities. Bridged the gap between hype and real traction.</p></div>
+    <div class="skcard"><div class="skcard-bg-num">03</div><div class="skcard-icon">⚡</div><div class="skcard-period">2022 – Present</div><div class="skcard-title">Project Launch & Scaling</div><p class="skcard-body">Worked hands-on at every stage — from raw launches to scaling narratives across Solana, BSC, and Base.</p></div>
   </div>
 </section>
 
+<!-- ===== PROJECTS ===== -->
 <section id="projects" class="pad">
   <div class="sec-eyebrow reveal"><span class="sec-num">// 03</span><div class="sec-hr"></div></div>
   <h2 class="sec-title reveal">PAST <span class="hi">WORK</span></h2>
-  <div class="proj-list">
+  <div class="proj-list" id="projectsList_display">
     <div class="pcard reveal">
       <div class="pcard-idx">01</div>
       <div class="pcard-body">
@@ -286,7 +449,7 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
         <div class="pcard-chain">BNB Chain · Memecoin</div>
         <div class="pcard-name">CZBIGBOSS ON BSC</div>
         <div class="pcard-role">// Growth Strategist</div>
-        <p class="pcard-desc">Achieved $100k ATH with only 13k market cap unbonded. First week of marketing reached peak valuation. Showcased highly efficient growth strategy and community building on BSC.</p>
+        <p class="pcard-desc">Achieved $100k ATH with only 13k market cap unbonded. First week of marketing reached peak valuation showcasing highly efficient community growth.</p>
       </div>
       <div class="pcard-metrics">
         <div><div class="metric-val">$100K</div><div class="metric-lbl">Peak Valuation</div></div>
@@ -299,12 +462,7 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
         <div class="pcard-chain">Base · Community Project</div>
         <div class="pcard-name">PEPPER MEME ON BASE</div>
         <div class="pcard-role">// Brand Ambassador & Space Host</div>
-        <p class="pcard-desc">Designed and hosted Taco Tuesday on Base — a weekly space that became the project's flagship engagement platform.</p>
-        <ul class="pcard-impacts">
-          <li>Reached thousands of listeners per episode</li>
-          <li>Transformed quiet project into recognizable Base presence</li>
-          <li>Established loyal supporters and sustained ecosystem growth</li>
-        </ul>
+        <p class="pcard-desc">Designed and hosted Taco Tuesday on Base — a weekly space that became the project's flagship engagement platform, reaching thousands of listeners per episode.</p>
       </div>
       <div class="pcard-metrics">
         <div><div class="metric-val">2000+</div><div class="metric-lbl">Community Members</div></div>
@@ -314,33 +472,27 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
   </div>
 </section>
 
+<!-- ===== CONNECT ===== -->
 <section id="social" class="pad">
   <div class="sec-eyebrow reveal"><span class="sec-num">// 04</span><div class="sec-hr"></div></div>
   <h2 class="sec-title reveal">LET'S <span class="hi">CONNECT</span></h2>
   <p class="connect-intro reveal">Building something on Solana or any chain? Need a community that actually believes in the project? Let's talk.</p>
-  <div class="socials">
+  <div class="socials" id="socialGrid_display">
     <a href="https://x.com/w0jakk" target="_blank" class="scard reveal">
       <svg class="scard-icon" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-      <span class="scard-platform">Twitter / X</span>
-      <span class="scard-handle">@w0jakk</span>
-      <span class="scard-arr">↗</span>
+      <span class="scard-platform">Twitter / X</span><span class="scard-handle">@w0jakk</span><span class="scard-arr">↗</span>
     </a>
     <a href="https://t.me/W0jakk1" target="_blank" class="scard reveal d1">
       <svg class="scard-icon" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-      <span class="scard-platform">Telegram</span>
-      <span class="scard-handle">@W0jakk1</span>
-      <span class="scard-arr">↗</span>
+      <span class="scard-platform">Telegram</span><span class="scard-handle">@W0jakk1</span><span class="scard-arr">↗</span>
     </a>
     <a href="https://t.me/+yWCzByv0S3cxMjBk" target="_blank" class="scard reveal d2">
       <svg class="scard-icon" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-      <span class="scard-platform">TG Portfolio</span>
-      <span class="scard-handle">Channel</span>
-      <span class="scard-arr">↗</span>
+      <span class="scard-platform">TG Portfolio</span><span class="scard-handle">Channel</span><span class="scard-arr">↗</span>
     </a>
     <div class="scard reveal d3" style="cursor:default">
       <svg class="scard-icon" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.113 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
-      <span class="scard-platform">Discord</span>
-      <span class="scard-handle">Keem0133</span>
+      <span class="scard-platform">Discord</span><span class="scard-handle">Keem0133</span>
     </div>
   </div>
   <div class="cta-band reveal">
@@ -355,114 +507,503 @@ footer{padding:34px 64px;border-top:1px solid rgba(0,170,255,0.07);display:flex;
 </footer>
 
 <script>
-/* ===== PARTICLE BACKGROUND ===== */
+// ===== SUPABASE =====
+const SUPABASE_URL = "https://bfybwhpjzzxwjmdynkef.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmeWJ3aHBqenp4d2ptZHlua2VmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNDcyNDIsImV4cCI6MjA5MTcyMzI0Mn0.kuSuqB-Lz2eHdKedZZ2L_2OwTGx-K8HsJn4Jw4iSgF4";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUser = null;
+
+// ===== ICON HELPERS =====
+const ICONS = {
+  twitter:`<svg class="scard-icon" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.631 5.905-5.631zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`,
+  telegram:`<svg class="scard-icon" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>`,
+  discord:`<svg class="scard-icon" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057.1 18.08.113 18.1.127 18.113a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>`,
+  other:`<svg class="scard-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="currentColor"/></svg>`
+};
+
+// ===== LOAD CONTENT =====
+async function loadContent() {
+  try {
+    const { data } = await sb.from('site_content').select('*');
+    if (!data) return;
+    const m = {};
+    data.forEach(r => m[r.key] = r.value);
+    if (m.hero_tagline) document.getElementById('dynamicTagline').innerText = m.hero_tagline;
+    if (m.about_p1) document.getElementById('aboutPara1').innerHTML = m.about_p1;
+    if (m.about_p2) document.getElementById('aboutPara2').innerHTML = m.about_p2;
+    if (m.about_p3) document.getElementById('aboutPara3').innerHTML = m.about_p3;
+    if (m.stat1) { const el = document.getElementById('stat1Val'); el.dataset.target = parseInt(m.stat1)||500; }
+    if (m.stat2) { const el = document.getElementById('stat2Val'); el.dataset.target = parseInt(m.stat2)||100; }
+    if (m.stat3) { const el = document.getElementById('stat3Val'); el.dataset.target = parseInt(m.stat3)||3; }
+    if (m.stat1_lbl) document.getElementById('stat1Lbl').innerText = m.stat1_lbl;
+    if (m.stat2_lbl) document.getElementById('stat2Lbl').innerText = m.stat2_lbl;
+    if (m.stat3_lbl) document.getElementById('stat3Lbl').innerText = m.stat3_lbl;
+  } catch(e) { console.log('Content load error:', e); }
+}
+
+async function loadProjects() {
+  try {
+    const { data } = await sb.from('projects').select('*').order('sort_order');
+    if (!data || !data.length) return;
+    const list = document.getElementById('projectsList_display');
+    list.innerHTML = '';
+    data.forEach((p, i) => {
+      const div = document.createElement('div');
+      div.className = 'pcard reveal';
+      div.innerHTML = `
+        <div class="pcard-idx">${String(i+1).padStart(2,'0')}</div>
+        <div class="pcard-body">
+          <div class="pcard-chain">${p.chain||''}</div>
+          <div class="pcard-name">${p.name}</div>
+          <div class="pcard-role">${p.role||''}</div>
+          <p class="pcard-desc">${p.description||''}</p>
+        </div>
+        <div class="pcard-metrics">
+          ${p.metric1_val ? `<div><div class="metric-val">${p.metric1_val}</div><div class="metric-lbl">${p.metric1_lbl||''}</div></div>` : ''}
+          ${p.metric2_val ? `<div><div class="metric-val">${p.metric2_val}</div><div class="metric-lbl">${p.metric2_lbl||''}</div></div>` : ''}
+        </div>`;
+      list.appendChild(div);
+    });
+    // re-observe new elements
+    list.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+  } catch(e) { console.log('Projects load error:', e); }
+}
+
+async function loadSkills() {
+  try {
+    const { data } = await sb.from('skills').select('*').order('sort_order');
+    if (!data || !data.length) return;
+    const grid = document.getElementById('skillsGrid');
+    grid.innerHTML = '';
+    data.forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'skcard';
+      div.innerHTML = `
+        <div class="skcard-bg-num">${String(i+1).padStart(2,'0')}</div>
+        <div class="skcard-icon">${s.icon||''}</div>
+        <div class="skcard-period">${s.period||''}</div>
+        <div class="skcard-title">${s.title}</div>
+        <p class="skcard-body">${s.body||''}</p>`;
+      grid.appendChild(div);
+    });
+  } catch(e) { console.log('Skills load error:', e); }
+}
+
+async function loadSocials() {
+  try {
+    const { data } = await sb.from('socials').select('*').order('sort_order');
+    if (!data || !data.length) return;
+    const grid = document.getElementById('socialGrid_display');
+    grid.innerHTML = '';
+    data.forEach((s, i) => {
+      const tag = s.url ? 'a' : 'div';
+      const el = document.createElement(tag);
+      el.className = `scard reveal${i > 0 ? ' d'+Math.min(i,3) : ''}`;
+      if (s.url) { el.href = s.url; el.target = '_blank'; }
+      else { el.style.cursor = 'default'; }
+      el.innerHTML = `
+        ${ICONS[s.platform_type]||ICONS.other}
+        <span class="scard-platform">${s.platform}</span>
+        <span class="scard-handle">${s.handle}</span>
+        ${s.url ? '<span class="scard-arr">↗</span>' : ''}`;
+      grid.appendChild(el);
+    });
+    grid.querySelectorAll('.reveal').forEach(el => revealObs.observe(el));
+  } catch(e) { console.log('Socials load error:', e); }
+}
+
+// ===== ADMIN: CONTENT SAVE =====
+async function saveContent() {
+  const updates = [
+    {key:'hero_tagline', value:document.getElementById('editTagline').value},
+    {key:'about_p1', value:document.getElementById('editAbout1').value},
+    {key:'about_p2', value:document.getElementById('editAbout2').value},
+    {key:'about_p3', value:document.getElementById('editAbout3').value},
+    {key:'stat1', value:document.getElementById('editStat1').value},
+    {key:'stat2', value:document.getElementById('editStat2').value},
+    {key:'stat3', value:document.getElementById('editStat3').value},
+    {key:'stat1_lbl', value:document.getElementById('editStat1Lbl').value},
+    {key:'stat2_lbl', value:document.getElementById('editStat2Lbl').value},
+    {key:'stat3_lbl', value:document.getElementById('editStat3Lbl').value},
+  ];
+  const st = document.getElementById('saveStatusContent');
+  st.innerText = 'Saving...';
+  for (const u of updates) {
+    const {error} = await sb.from('site_content').upsert({key:u.key,value:u.value},{onConflict:'key'});
+    if (error) { st.innerText = '❌ '+error.message; return; }
+  }
+  st.innerText = '✅ Saved!';
+  setTimeout(()=>st.innerText='',2500);
+  loadContent();
+}
+
+// ===== ADMIN: PROJECTS =====
+async function refreshAdminProjects() {
+  const { data } = await sb.from('projects').select('*').order('sort_order');
+  const list = document.getElementById('projectsList');
+  list.innerHTML = '';
+  if (!data || !data.length) { list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:JetBrains Mono,monospace">No projects yet.</div>'; return; }
+  data.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'admin-item';
+    item.innerHTML = `
+      <div class="admin-item-info">
+        <div class="admin-item-name">${p.name}</div>
+        <div class="admin-item-sub">${p.chain||''} · Order: ${p.sort_order}</div>
+      </div>
+      <div class="admin-item-actions">
+        <button onclick="editProject(${p.id})">Edit</button>
+        <button class="del" onclick="deleteProject(${p.id})">Del</button>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function openProjectForm(title) {
+  document.getElementById('projectFormTitle').innerText = title;
+  document.getElementById('projectForm').classList.add('open');
+  document.getElementById('projectForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeProjectForm() {
+  document.getElementById('projectForm').classList.remove('open');
+  ['projectFormId','pfName','pfChain','pfRole','pfDesc','pfMetric1Val','pfMetric1Lbl','pfMetric2Val','pfMetric2Lbl','pfOrder'].forEach(id=>document.getElementById(id).value='');
+}
+
+document.getElementById('addProjectBtn').onclick = () => { closeProjectForm(); openProjectForm('New Project'); };
+document.getElementById('cancelProjectBtn').onclick = closeProjectForm;
+
+async function editProject(id) {
+  const {data} = await sb.from('projects').select('*').eq('id',id).single();
+  if (!data) return;
+  document.getElementById('projectFormId').value = data.id;
+  document.getElementById('pfName').value = data.name||'';
+  document.getElementById('pfChain').value = data.chain||'';
+  document.getElementById('pfRole').value = data.role||'';
+  document.getElementById('pfDesc').value = data.description||'';
+  document.getElementById('pfMetric1Val').value = data.metric1_val||'';
+  document.getElementById('pfMetric1Lbl').value = data.metric1_lbl||'';
+  document.getElementById('pfMetric2Val').value = data.metric2_val||'';
+  document.getElementById('pfMetric2Lbl').value = data.metric2_lbl||'';
+  document.getElementById('pfOrder').value = data.sort_order||1;
+  openProjectForm('Edit Project');
+}
+
+async function deleteProject(id) {
+  if (!confirm('Delete this project?')) return;
+  await sb.from('projects').delete().eq('id',id);
+  refreshAdminProjects(); loadProjects();
+}
+
+document.getElementById('saveProjectBtn').onclick = async () => {
+  const id = document.getElementById('projectFormId').value;
+  const payload = {
+    name: document.getElementById('pfName').value,
+    chain: document.getElementById('pfChain').value,
+    role: document.getElementById('pfRole').value,
+    description: document.getElementById('pfDesc').value,
+    metric1_val: document.getElementById('pfMetric1Val').value,
+    metric1_lbl: document.getElementById('pfMetric1Lbl').value,
+    metric2_val: document.getElementById('pfMetric2Val').value,
+    metric2_lbl: document.getElementById('pfMetric2Lbl').value,
+    sort_order: parseInt(document.getElementById('pfOrder').value)||1,
+  };
+  const st = document.getElementById('saveStatusProjects');
+  st.innerText = 'Saving...';
+  const {error} = id ? await sb.from('projects').update(payload).eq('id',id) : await sb.from('projects').insert(payload);
+  if (error) { st.innerText = '❌ '+error.message; return; }
+  st.innerText = '✅ Saved!'; setTimeout(()=>st.innerText='',2500);
+  closeProjectForm(); refreshAdminProjects(); loadProjects();
+};
+
+// ===== ADMIN: SKILLS =====
+async function refreshAdminSkills() {
+  const {data} = await sb.from('skills').select('*').order('sort_order');
+  const list = document.getElementById('skillsList');
+  list.innerHTML = '';
+  if (!data || !data.length) { list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:JetBrains Mono,monospace">No skills yet.</div>'; return; }
+  data.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'admin-item';
+    item.innerHTML = `
+      <div class="admin-item-info">
+        <div class="admin-item-name">${s.icon||''} ${s.title}</div>
+        <div class="admin-item-sub">${s.period||''} · Order: ${s.sort_order}</div>
+      </div>
+      <div class="admin-item-actions">
+        <button onclick="editSkill(${s.id})">Edit</button>
+        <button class="del" onclick="deleteSkill(${s.id})">Del</button>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function openSkillForm(title) {
+  document.getElementById('skillFormTitle').innerText = title;
+  document.getElementById('skillForm').classList.add('open');
+  document.getElementById('skillForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeSkillForm() {
+  document.getElementById('skillForm').classList.remove('open');
+  ['skillFormId','sfTitle','sfIcon','sfPeriod','sfBody','sfOrder'].forEach(id=>document.getElementById(id).value='');
+}
+
+document.getElementById('addSkillBtn').onclick = () => { closeSkillForm(); openSkillForm('New Skill'); };
+document.getElementById('cancelSkillBtn').onclick = closeSkillForm;
+
+async function editSkill(id) {
+  const {data} = await sb.from('skills').select('*').eq('id',id).single();
+  if (!data) return;
+  document.getElementById('skillFormId').value = data.id;
+  document.getElementById('sfTitle').value = data.title||'';
+  document.getElementById('sfIcon').value = data.icon||'';
+  document.getElementById('sfPeriod').value = data.period||'';
+  document.getElementById('sfBody').value = data.body||'';
+  document.getElementById('sfOrder').value = data.sort_order||1;
+  openSkillForm('Edit Skill');
+}
+
+async function deleteSkill(id) {
+  if (!confirm('Delete this skill?')) return;
+  await sb.from('skills').delete().eq('id',id);
+  refreshAdminSkills(); loadSkills();
+}
+
+document.getElementById('saveSkillBtn').onclick = async () => {
+  const id = document.getElementById('skillFormId').value;
+  const payload = {
+    title: document.getElementById('sfTitle').value,
+    icon: document.getElementById('sfIcon').value,
+    period: document.getElementById('sfPeriod').value,
+    body: document.getElementById('sfBody').value,
+    sort_order: parseInt(document.getElementById('sfOrder').value)||1,
+  };
+  const st = document.getElementById('saveStatusSkills');
+  st.innerText = 'Saving...';
+  const {error} = id ? await sb.from('skills').update(payload).eq('id',id) : await sb.from('skills').insert(payload);
+  if (error) { st.innerText = '❌ '+error.message; return; }
+  st.innerText = '✅ Saved!'; setTimeout(()=>st.innerText='',2500);
+  closeSkillForm(); refreshAdminSkills(); loadSkills();
+};
+
+// ===== ADMIN: SOCIALS =====
+async function refreshAdminSocials() {
+  const {data} = await sb.from('socials').select('*').order('sort_order');
+  const list = document.getElementById('socialsList');
+  list.innerHTML = '';
+  if (!data || !data.length) { list.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:JetBrains Mono,monospace">No socials yet.</div>'; return; }
+  data.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'admin-item';
+    item.innerHTML = `
+      <div class="admin-item-info">
+        <div class="admin-item-name">${s.platform} — ${s.handle}</div>
+        <div class="admin-item-sub">${s.url||'no url'} · Order: ${s.sort_order}</div>
+      </div>
+      <div class="admin-item-actions">
+        <button onclick="editSocial(${s.id})">Edit</button>
+        <button class="del" onclick="deleteSocial(${s.id})">Del</button>
+      </div>`;
+    list.appendChild(item);
+  });
+}
+
+function openSocialForm(title) {
+  document.getElementById('socialFormTitle').innerText = title;
+  document.getElementById('socialForm').classList.add('open');
+  document.getElementById('socialForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeSocialForm() {
+  document.getElementById('socialForm').classList.remove('open');
+  ['socialFormId','soFPlatform','soFHandle','soFUrl','soFOrder'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('soFType').value='twitter';
+}
+
+document.getElementById('addSocialBtn').onclick = () => { closeSocialForm(); openSocialForm('New Social'); };
+document.getElementById('cancelSocialBtn').onclick = closeSocialForm;
+
+async function editSocial(id) {
+  const {data} = await sb.from('socials').select('*').eq('id',id).single();
+  if (!data) return;
+  document.getElementById('socialFormId').value = data.id;
+  document.getElementById('soFPlatform').value = data.platform||'';
+  document.getElementById('soFHandle').value = data.handle||'';
+  document.getElementById('soFUrl').value = data.url||'';
+  document.getElementById('soFType').value = data.platform_type||'other';
+  document.getElementById('soFOrder').value = data.sort_order||1;
+  openSocialForm('Edit Social');
+}
+
+async function deleteSocial(id) {
+  if (!confirm('Delete this social?')) return;
+  await sb.from('socials').delete().eq('id',id);
+  refreshAdminSocials(); loadSocials();
+}
+
+document.getElementById('saveSocialBtn').onclick = async () => {
+  const id = document.getElementById('socialFormId').value;
+  const payload = {
+    platform: document.getElementById('soFPlatform').value,
+    handle: document.getElementById('soFHandle').value,
+    url: document.getElementById('soFUrl').value,
+    platform_type: document.getElementById('soFType').value,
+    sort_order: parseInt(document.getElementById('soFOrder').value)||1,
+  };
+  const st = document.getElementById('saveStatusSocials');
+  st.innerText = 'Saving...';
+  const {error} = id ? await sb.from('socials').update(payload).eq('id',id) : await sb.from('socials').insert(payload);
+  if (error) { st.innerText = '❌ '+error.message; return; }
+  st.innerText = '✅ Saved!'; setTimeout(()=>st.innerText='',2500);
+  closeSocialForm(); refreshAdminSocials(); loadSocials();
+};
+
+// ===== ADMIN AUTH =====
+const modal = document.getElementById('adminModal');
+const loginView = document.getElementById('loginView');
+const editorView = document.getElementById('editorView');
+const editHint = document.getElementById('editHint');
+
+async function refreshEditor() {
+  const {data} = await sb.from('site_content').select('*');
+  const d = {};
+  if (data) data.forEach(r => d[r.key]=r.value);
+  document.getElementById('editTagline').value = d.hero_tagline||'';
+  document.getElementById('editAbout1').value = d.about_p1||'';
+  document.getElementById('editAbout2').value = d.about_p2||'';
+  document.getElementById('editAbout3').value = d.about_p3||'';
+  document.getElementById('editStat1').value = d.stat1||'500+';
+  document.getElementById('editStat2').value = d.stat2||'100+';
+  document.getElementById('editStat3').value = d.stat3||'3+';
+  document.getElementById('editStat1Lbl').value = d.stat1_lbl||'Onboarded';
+  document.getElementById('editStat2Lbl').value = d.stat2_lbl||'Spaces Hosted';
+  document.getElementById('editStat3Lbl').value = d.stat3_lbl||'Years Active';
+  refreshAdminProjects();
+  refreshAdminSkills();
+  refreshAdminSocials();
+}
+
+function showAdminUI(loggedIn) {
+  if (loggedIn) {
+    loginView.style.display='none'; editorView.style.display='block';
+    document.getElementById('modalTitle').innerText='✏️ EDIT CONTENT';
+    editHint.innerText='✏️ ADMIN MODE'; refreshEditor();
+  } else {
+    loginView.style.display='block'; editorView.style.display='none';
+    document.getElementById('modalTitle').innerText='🔐 ADMIN ACCESS';
+    editHint.innerText='';
+  }
+}
+
+document.getElementById('doLoginBtn').onclick = async () => {
+  const email = document.getElementById('adminEmail').value.trim();
+  const pw = document.getElementById('adminPassword').value;
+  const err = document.getElementById('loginError');
+  if (!email||!pw) { err.innerText='Enter email & password'; return; }
+  err.innerText='Signing in...';
+  const {data,error} = await sb.auth.signInWithPassword({email,password:pw});
+  if (error) { err.innerText='❌ '+error.message; return; }
+  currentUser=data.user; err.innerText='';
+  showAdminUI(true); modal.classList.remove('active');
+};
+
+document.getElementById('logoutBtn').onclick = () => {
+  sb.auth.signOut(); currentUser=null;
+  showAdminUI(false); modal.classList.remove('active');
+};
+
+document.getElementById('saveContentBtn').onclick = saveContent;
+
+// Tab switching
+document.querySelectorAll('.mtab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.mtab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  };
+});
+
+// Secret 4-click logo trigger
+let clickCount=0,clickTimer=null;
+document.getElementById('secretAdminTrigger').addEventListener('click',()=>{
+  clickCount++;
+  if(clickTimer) clearTimeout(clickTimer);
+  clickTimer=setTimeout(()=>{clickCount=0},800);
+  if(clickCount>=4){
+    clickCount=0;
+    sb.auth.getSession().then(({data})=>{
+      currentUser=data.session?.user||null;
+      showAdminUI(!!currentUser);
+      modal.classList.add('active');
+    });
+  }
+});
+
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('active')});
+
+// ===== BACKGROUND (constellation + orbs) =====
 const canvas=document.getElementById('bg-canvas');
 const ctx=canvas.getContext('2d');
 let W,H;
 function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight}
 resize();window.addEventListener('resize',resize);
-
 class P{
   constructor(){this.init()}
-  init(){
-    this.x=Math.random()*W;this.y=Math.random()*H;
-    this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;
-    this.r=Math.random()*1.4+.3;this.a=Math.random()*.5+.1;
-    this.ph=Math.random()*Math.PI*2;
-  }
-  tick(){
-    this.x+=this.vx;this.y+=this.vy;this.ph+=.018;
-    if(this.x<0||this.x>W||this.y<0||this.y>H)this.init();
-  }
-  draw(){
-    const a=this.a*(.7+.3*Math.sin(this.ph));
-    ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(0,170,255,${a})`;ctx.fill();
-  }
+  init(){this.x=Math.random()*W;this.y=Math.random()*H;this.vx=(Math.random()-.5)*.35;this.vy=(Math.random()-.5)*.35;this.r=Math.random()*1.4+.3;this.a=Math.random()*.5+.1;this.ph=Math.random()*Math.PI*2}
+  tick(){this.x+=this.vx;this.y+=this.vy;this.ph+=.018;if(this.x<0||this.x>W||this.y<0||this.y>H)this.init()}
+  draw(){const a=this.a*(.7+.3*Math.sin(this.ph));ctx.beginPath();ctx.arc(this.x,this.y,this.r,0,Math.PI*2);ctx.fillStyle=`rgba(0,170,255,${a})`;ctx.fill()}
 }
-
-const pts=[];
-for(let i=0;i<130;i++)pts.push(new P());
-
-let mx=W/2,my=H/2;
-document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY});
-
-const orbs=[
-  {ox:.12,oy:.18,r:320,s:.00025,ph:0},
-  {ox:.88,oy:.55,r:420,s:.00018,ph:2.1},
-  {ox:.5,oy:.92,r:260,s:.0003,ph:4.2},
-];
-
+const pts=[];for(let i=0;i<130;i++)pts.push(new P());
+const orbs=[{ox:.12,oy:.18,r:320,s:.00025,ph:0},{ox:.88,oy:.55,r:420,s:.00018,ph:2.1},{ox:.5,oy:.92,r:260,s:.0003,ph:4.2}];
 let t=0;
 function frame(){
-  requestAnimationFrame(frame);
-  ctx.clearRect(0,0,W,H);
-  // orbs
-  orbs.forEach(o=>{
-    const cx=(o.ox+Math.sin(t*o.s+o.ph)*.06)*W;
-    const cy=(o.oy+Math.cos(t*o.s+o.ph)*.05)*H;
-    const g=ctx.createRadialGradient(cx,cy,0,cx,cy,o.r);
-    g.addColorStop(0,'rgba(0,70,200,.07)');g.addColorStop(1,'rgba(0,0,0,0)');
-    ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  });
-  // connections
+  requestAnimationFrame(frame);ctx.clearRect(0,0,W,H);
+  orbs.forEach(o=>{const cx=(o.ox+Math.sin(t*o.s+o.ph)*.06)*W,cy=(o.oy+Math.cos(t*o.s+o.ph)*.05)*H,g=ctx.createRadialGradient(cx,cy,0,cx,cy,o.r);g.addColorStop(0,'rgba(0,70,200,.07)');g.addColorStop(1,'rgba(0,0,0,0)');ctx.fillStyle=g;ctx.fillRect(0,0,W,H)});
   const D=150;
-  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){
-    const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
-    if(d<D){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,140,255,${(1-d/D)*.1})`;ctx.lineWidth=.5;ctx.stroke()}
-  }
-  pts.forEach(p=>{p.tick();p.draw()});
-  t++;
+  for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);if(d<D){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=`rgba(0,140,255,${(1-d/D)*.1})`;ctx.lineWidth=.5;ctx.stroke()}}
+  pts.forEach(p=>{p.tick();p.draw()});t++;
 }
 frame();
 
-/* ===== CURSOR ===== */
-const cur=document.getElementById('cursor');
-const ring=document.getElementById('cursorRing');
-let rx=0,ry=0,cx=0,cy=0;
+// ===== CURSOR =====
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursorRing');
+let rx=0,ry=0,cx2=0,cy2=0;
 if(window.matchMedia('(hover:hover)').matches){
-  document.addEventListener('mousemove',e=>{cx=e.clientX;cy=e.clientY;cur.style.left=cx+'px';cur.style.top=cy+'px'});
-  (function animR(){rx+=(cx-rx)*.13;ry+=(cy-ry)*.13;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animR)})();
+  document.addEventListener('mousemove',e=>{cx2=e.clientX;cy2=e.clientY;cur.style.left=cx2+'px';cur.style.top=cy2+'px'});
+  (function animR(){rx+=(cx2-rx)*.13;ry+=(cy2-ry)*.13;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animR)})();
   document.querySelectorAll('a,.skcard,.acard,.pcard,.scard,.btn-main,.btn-ghost').forEach(el=>{
     el.addEventListener('mouseenter',()=>{ring.style.transform='translate(-50%,-50%) scale(1.9)';ring.style.borderColor='rgba(0,170,255,.9)'});
     el.addEventListener('mouseleave',()=>{ring.style.transform='translate(-50%,-50%) scale(1)';ring.style.borderColor='rgba(0,170,255,.5)'});
   });
 }
 
-/* ===== NAV SCROLL ===== */
+// ===== NAV SCROLL =====
 window.addEventListener('scroll',()=>document.getElementById('nav').classList.toggle('scrolled',scrollY>40));
 
-/* ===== COUNTER ===== */
+// ===== COUNTER =====
 function counter(el,target,suffix){
   let s=null;
-  const run=ts=>{
-    if(!s)s=ts;
-    const p=Math.min((ts-s)/2200,1),e=1-Math.pow(1-p,3);
-    el.textContent=Math.round(e*target)+(p===1?suffix:'');
-    if(p<1)requestAnimationFrame(run);
-    else el.textContent=target+suffix;
-  };
+  const run=ts=>{if(!s)s=ts;const p=Math.min((ts-s)/2200,1),e=1-Math.pow(1-p,3);el.textContent=Math.round(e*target)+(p===1?suffix:'');if(p<1)requestAnimationFrame(run);else el.textContent=target+suffix};
   requestAnimationFrame(run);
 }
 let counted=false;
 const cEls=document.querySelectorAll('.hstat-num[data-target]');
-new IntersectionObserver(([e])=>{
-  if(e.isIntersecting&&!counted){
-    counted=true;
-    cEls.forEach(el=>counter(el,+el.dataset.target,el.dataset.suffix||''));
-  }
-},{threshold:.5}).observe(cEls[0]);
-
-/* ===== SCROLL REVEAL ===== */
-const obs=new IntersectionObserver(entries=>{
-  entries.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('up'),i*75);obs.unobserve(e.target)}});
-},{threshold:.1});
-document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
-
-/* ===== MOBILE NO CURSOR ===== */
-if('ontouchstart' in window||navigator.maxTouchPoints>0){
-  const s=document.createElement('style');s.textContent='*{cursor:default!important}';document.head.appendChild(s);
+if(cEls.length){
+  new IntersectionObserver(([e])=>{
+    if(e.isIntersecting&&!counted){counted=true;cEls.forEach(el=>counter(el,+el.dataset.target,el.dataset.suffix||''))}
+  },{threshold:.5}).observe(cEls[0]);
 }
+
+// ===== SCROLL REVEAL =====
+const revealObs=new IntersectionObserver(entries=>{
+  entries.forEach((e,i)=>{if(e.isIntersecting){setTimeout(()=>e.target.classList.add('up'),i*75);revealObs.unobserve(e.target)}});
+},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>revealObs.observe(el));
+
+// ===== INIT =====
+loadContent();
+loadProjects();
+loadSkills();
+loadSocials();
 </script>
 </body>
 </html>
